@@ -7,20 +7,32 @@
        <div class="tree_btnbox" v-show="actionTree">
          <el-button plain size="small" :disabled ='add' @click="handleAdd = true">添加子集组</el-button>
          <el-button plain size="small" :disabled ='del'>删除</el-button>
-         <el-button plain size="small" :disabled ='editor'>编辑组名称</el-button>
+         <el-button plain size="small" :disabled ='editor' @click="handleEdit = true">编辑组名称</el-button>
          <el-button plain size="small" :disabled ='reset'>重置</el-button>
        </div>
 
-      <el-dialog title="" :visible.sync="handleAdd" width="340px" top='40vh' center class="dialog-box">
-          <el-form :model="form" :rules="rules2">
+      <el-dialog title="" :visible.sync="handleAdd" width="340px" top='40vh'  center class="dialog-box">
+          <el-form :model="form" :rules="rules2" ref="ruleForm">
             <el-form-item label="组名称:" prop="ztreeName" label-width="80px">
-              <el-input v-model="form.name" auto-complete="off" style="width:160px;"></el-input>
+              <el-input v-model="form.ztreeName" auto-complete="off" style="width:160px;" ref="el-input"></el-input>
+            </el-form-item>
+            <el-form-item class="btn">
+                  <el-button @click="handleCancel()">取 消</el-button>
+                  <el-button type="primary" @click="ztreeAdd('ruleForm')">确 定</el-button>
             </el-form-item>
           </el-form>
-          <span slot="footer" class="dialog-footer">
-            <el-button @click="centerDialogVisible = false">取 消</el-button>
-            <el-button type="primary" @click="centerDialogVisible = false">确 定</el-button>
-          </span>
+      </el-dialog>
+
+       <el-dialog title="" :visible.sync="handleEdit" width="340px" top='40vh'  center class="dialog-box">
+          <el-form :model="form" :rules="rules2" ref="EditForm">
+            <el-form-item label="组名称:" prop="ztreeName" label-width="80px">
+              <el-input v-model="form.ztreeName" auto-complete="off" style="width:160px;" ref="el-input"></el-input>
+            </el-form-item>
+            <el-form-item class="btn">
+                  <el-button @click="handleCancelEdit()">取 消</el-button>
+                  <el-button type="primary" @click="ztreeEdit('EditForm')">确 定</el-button>
+            </el-form-item>
+          </el-form>
       </el-dialog>
        <div class="tree_wrap">
           <ul id="treeDemo" class="ztree"></ul>
@@ -33,8 +45,8 @@ export default {
   data () {
     /* eslint-disable */
     var zNodes = [
-      { id: 1, pId: 0, name: '父节点1 - 展开', open: true},
-      { id: 11, pId: 1, name: '父节点11 - 折叠'},
+      { id: 1, pId: 0, name: '根节点组', open: true},
+      { id: 11, pId: 1, name: '默认组'},
       { id: 111, pId: 11, name: '叶子节点111'},
       { id: 112, pId: 11, name: '叶子节点112'},
       { id: 113, pId: 11, name: '叶子节点113'},
@@ -44,24 +56,7 @@ export default {
       { id: 122, pId: 12, name: '叶子节点122'},
       { id: 123, pId: 12, name: '叶子节点123'},
       { id: 124, pId: 12, name: '叶子节点124'},
-      { id: 13, pId: 1, name: '父节点13 - 没有子节点', isParent: true},
-      { id: 2, pId: 0, name: '父节点2 - 折叠'},
-      { id: 21, pId: 2, name: '父节点21 - 展开', open: true},
-      { id: 211, pId: 21, name: '叶子节点211'},
-      { id: 212, pId: 21, name: '叶子节点212'},
-      { id: 213, pId: 21, name: '叶子节点213'},
-      { id: 214, pId: 21, name: '叶子节点214'},
-      { id: 22, pId: 2, name: '父节点22 - 折叠'},
-      { id: 221, pId: 22, name: '叶子节点221'},
-      { id: 222, pId: 22, name: '叶子节点222'},
-      { id: 223, pId: 22, name: '叶子节点223'},
-      { id: 224, pId: 22, name: '叶子节点224'},
-      { id: 23, pId: 2, name: '父节点23 - 折叠'},
-      { id: 231, pId: 23, name: '叶子节点231'},
-      { id: 232, pId: 23, name: '叶子节点232'},
-      { id: 233, pId: 23, name: '叶子节点233'},
-      { id: 234, pId: 23, name: '叶子节点234'},
-      { id: 3, pId: 0, name: '父节点3 - 没有子节点', isParent: true}
+      { id: 13, pId: 1, name: '父节点13 - 没有子节点', isParent: true}
     ]
     return {
       zTreedata: zNodes,
@@ -73,10 +68,18 @@ export default {
           }
         },
         check: {
-          enable: true
+          enable: true,
+          chkboxType: { "Y" : "", "N" : "" }
         },
+        edit: {
+          enable: true,
+          showRemoveBtn: false,
+          showRenameBtn: true
+			  },
         callback: {
-		      onCheck: this.zTreeOnCheck
+		      onCheck: this.zTreeOnCheck,
+          beforeCheck: this.zTreeBeforeCheck,
+          beforeClick: this.zTreeBeforeClick
 	      }
       },
       actionTree:false,
@@ -85,8 +88,9 @@ export default {
       editor: false,
       reset: false,
       handleAdd: false,
+      handleEdit: false,
       form: {
-          name: ''
+          ztreeName: ''
       },
       rules2: {
         ztreeName: [{required: true, message: '不为空',}]
@@ -102,16 +106,104 @@ export default {
     })
   },
   methods: {
+    zTreeBeforeCheck(treeId, treeNode) {
+      // 每次勾选前，先初始化
+        this.actionTree = false
+        this.add = false
+        this.del = false
+        this.editor = false
+        this.reset = false
+
+    },
      zTreeOnCheck (event, treeId, treeNode) {
-       let treeObj = $.fn.zTree.getZTreeObj("treeDemo");
+       let treeObj = $.fn.zTree.getZTreeObj("treeDemo")
+      //  if(treeNode.checked){
+      //    treeObj.selectNode(treeNode)
+      //  }else{
+      //    treeObj.cancelSelectedNode(treeNode)
+      //  }   
       //  获取选中节点
        let sNodes = treeObj.getCheckedNodes(true);
+       if(sNodes.length >1){
+          this.editor = true
+          this.add = true
+       }
        if(sNodes.length > 0){
+         sNodes.forEach((item, index) => {
+           // 跟节点
+           if (item.pId === null) {
+             console.log(1)
+              this.editor = true
+              this.del = true
+           }else if (item.id === 11 || item.pId === 11) {
+              console.log(2)
+             // 默认组
+             this.editor = true
+             this.del = true
+             this.add = true
+           }
+         });
          this.actionTree = true
        }else{
-         this.actionTree = false
        }
        console.log(sNodes)
+     },
+     zTreeBeforeClick (treeId, treeNode, clickFlag) {
+      //  return false
+      //  var zTree = $.fn.zTree.getZTreeObj("treeDemo");
+      //  console.log(treeNode)
+			//  zTree.checkNode(treeNode, !treeNode.checked, null, true);
+     },
+     handleCancel () {
+       this.$refs['ruleForm'].resetFields()
+       this.handleAdd = false
+     },
+     ztreeAdd (formName) {
+       this.$refs[formName].validate(valid => {
+        if (valid) {
+           console.log('ztreeAdd',this.form.ztreeName)
+          var zTree = $.fn.zTree.getZTreeObj("treeDemo")
+          //  var nodes = zTree.getSelectedNodes()
+          var nodes = zTree.getCheckedNodes(true)
+          var treeNode = nodes[0]
+            if (treeNode) {
+              treeNode = zTree.addNodes(treeNode, {id:(100 + 3), pId:treeNode.id, name:this.form.ztreeName});
+            } else {
+              treeNode = zTree.addNodes(null, {id:(100), pId:0, name: this.form.ztreeName});
+            }
+            if (treeNode) {
+              zTree.editName(treeNode[0]);
+            } else {
+              alert("叶子节点被锁定，无法增加子节点");
+            }
+          this.handleAdd = false
+        } else {
+          console.log('error submit!!')
+          return false
+        }
+      })
+     },
+     ztreeEdit (formName) {
+        this.$refs[formName].validate(valid => {
+        if (valid) {
+         	var zTree = $.fn.zTree.getZTreeObj("treeDemo"),
+          nodes = zTree.getCheckedNodes(true),
+          treeNode = nodes[0];
+          console.log(treeNode)
+          if (nodes.length == 0) {
+            alert("请先选择一个节点");
+            return;
+          }
+          zTree.editName(treeNode);
+        } else {
+          console.log('error submit!!')
+          return false
+        }
+      })
+     },
+     handleCancelEdit () {
+       this.$refs['EditForm'].resetFields()
+       this.handleEdit = false
      }
   }
 }
@@ -136,6 +228,10 @@ export default {
         position: absolute;
         right: 15px;
         top:15px;
+      }
+      .btn{
+        display: flex;
+        justify-content: center;
       }
   }
 </style>

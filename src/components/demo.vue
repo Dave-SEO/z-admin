@@ -68,7 +68,8 @@ export default {
           beforeClick: this.beforeClick,
           onClick: this.onClick,
           beforeCheck: this.zTreeBeforeCheck,
-          onAsyncSuccess: this.zTreeOnAsyncSuccess
+          onAsyncSuccess: this.zTreeOnAsyncSuccess,
+          beforeClick: this.zTreeBeforeClick
         }
       }
     //   data: JSON.parse(JSON.stringify(this.data1))
