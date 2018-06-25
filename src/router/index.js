@@ -27,6 +27,11 @@ export default new Router({
           component: resolve => require(['views/Group/Member'], resolve)
         },
         {
+          path: '/PeopleList/:id',
+          name: '/PeopleList',
+          component: resolve => require(['views/Group/PeopleList'], resolve)
+        },
+        {
           path: '/MeetingManagement',
           name: 'MeetingManagement',
           component: resolve => require(['views/meeting/MeetingManagement'], resolve)

@@ -6,9 +6,9 @@
        </vheader>
        <div class="tree_btnbox" v-show="actionTree">
          <el-button plain size="small" :disabled ='add' @click="handleAdd = true">添加子集组</el-button>
-         <el-button plain size="small" :disabled ='del'>删除</el-button>
+         <el-button plain size="small" :disabled ='del' @click="handleDelete = true">删除</el-button>
          <el-button plain size="small" :disabled ='editor' @click="handleEdit = true">编辑组名称</el-button>
-         <el-button plain size="small" :disabled ='reset'>重置</el-button>
+         <el-button plain size="small" :disabled ='reset' @click="ztreeReset">重置</el-button>
        </div>
 
       <el-dialog title="" :visible.sync="handleAdd" width="340px" top='40vh'  center class="dialog-box">
@@ -34,6 +34,13 @@
             </el-form-item>
           </el-form>
       </el-dialog>
+      <el-dialog title="" :visible.sync="handleDelete" width="340px" top='40vh'  center class="dialog-box" >
+            <div style="text-align:center">确定删除所选组别？</div>
+            <span slot="footer" class="dialog-footer">
+              <el-button type="primary" @click="ztreeDelete()">确 定</el-button>
+              <el-button @click="handleDelete = false">取 消</el-button>
+            </span>
+      </el-dialog>
        <div class="tree_wrap">
           <ul id="treeDemo" class="ztree"></ul>
        </div>
@@ -56,7 +63,7 @@ export default {
       { id: 122, pId: 12, name: '叶子节点122'},
       { id: 123, pId: 12, name: '叶子节点123'},
       { id: 124, pId: 12, name: '叶子节点124'},
-      { id: 13, pId: 1, name: '父节点13 - 没有子节点', isParent: true}
+      { id: 13, pId: 1, name: '父节点13 - 没有子节点'}
     ]
     return {
       zTreedata: zNodes,
@@ -68,13 +75,12 @@ export default {
           }
         },
         check: {
-          enable: true,
-          chkboxType: { "Y" : "", "N" : "" }
+          enable: true
         },
         edit: {
-          enable: true,
+          enable: false,
           showRemoveBtn: false,
-          showRenameBtn: true
+          showRenameBtn: false
 			  },
         callback: {
 		      onCheck: this.zTreeOnCheck,
@@ -89,6 +95,7 @@ export default {
       reset: false,
       handleAdd: false,
       handleEdit: false,
+      handleDelete: false,
       form: {
           ztreeName: ''
       },
@@ -123,13 +130,23 @@ export default {
       //    treeObj.cancelSelectedNode(treeNode)
       //  }   
       //  获取选中节点
-       let sNodes = treeObj.getCheckedNodes(true);
-       if(sNodes.length >1){
+       let sNodes = treeObj.getCheckedNodes(true)
+        var checkedArr = []
+       if(sNodes.length>0){
+        //  获取完全选中状态
+         sNodes.forEach((list,i) => {
+           if(!list.getCheckStatus().half){
+             checkedArr.push(list)
+           }
+         })
+       }
+      console.log(checkedArr)
+       if(checkedArr.length >1){
           this.editor = true
           this.add = true
        }
-       if(sNodes.length > 0){
-         sNodes.forEach((item, index) => {
+       if(checkedArr.length > 0){
+         checkedArr.forEach((item, index) => {
            // 跟节点
            if (item.pId === null) {
              console.log(1)
@@ -146,7 +163,7 @@ export default {
          this.actionTree = true
        }else{
        }
-       console.log(sNodes)
+      
      },
      zTreeBeforeClick (treeId, treeNode, clickFlag) {
       //  return false
@@ -204,6 +221,41 @@ export default {
      handleCancelEdit () {
        this.$refs['EditForm'].resetFields()
        this.handleEdit = false
+     },
+     ztreeDelete () {
+       // 获取ztree
+       var treeObj = $.fn.zTree.getZTreeObj("treeDemo")
+       // 获取选中的CheckBox，包括半选
+       var nodes = treeObj.getCheckedNodes(true)
+      // 获取全部选中的CheckBox
+      var checkAlls = []
+      nodes.forEach((ite, ind)=>{
+        if(!ite.getCheckStatus().half){
+          checkAlls.push(ite)
+        }
+      })
+      // 判断选中的CheckBox里是否包含子节点
+       var checkIsParent = checkAlls.some((item) => {
+         console.log(item.isParent)
+          return item.isParent === true
+        })
+      // 如果CheckBox没有子级
+       if(!checkIsParent){
+         for (var i=0, l=checkAlls.length; i < l; i++) {
+            treeObj.removeNode(checkAlls[i])
+         }
+       }else{
+         //如果有子级
+         alert('有子级')
+       }
+     },
+     ztreeReset() {
+        this.add = false
+        this.del = false
+        this.editor = false
+        this.reset = false
+        var treeObj = $.fn.zTree.getZTreeObj("treeDemo")
+        treeObj.checkAllNodes(false)
      }
   }
 }
